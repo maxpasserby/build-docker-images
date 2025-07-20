@@ -1,0 +1,31 @@
+networks:
+  custom_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+services:
+  logstash:
+    container_name: logstash
+    image: logstash:8.15.0
+    networks:
+      custom_network:
+        ipv4_address: 172.20.0.2
+    ports:
+      - ${LOGSTASH_PORT:-5044}:5044
+      - ${LOGSTASH_STATS_PORT:-9600}:9600
+  exporter:
+    container_name: logstash-exporter
+    image: kuskoman/logstash-exporter:v1.9.0
+    networks:
+      custom_network:
+        ipv4_address: 172.20.0.3
+    restart: unless-stopped
+    environment:
+      - LOGSTASH_URL=http://172.20.0.2:9600
+      - PORT=9198
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+    ports:
+      - ${EXPORTER_PORT:-9198}:9198
