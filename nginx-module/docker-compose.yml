@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:1.27.2
+    ports:
+      - "80:80"
+      - "8080:8080"  # 用于 stub_status (STS)
+      - "8081:8081"  # 用于 VTS
+    volumes:
+      - /opt/images/a/docker-nginx-1.27.2/modules/pkg-oss/:/opt/pkg-oss
+    restart: unless-stopped
