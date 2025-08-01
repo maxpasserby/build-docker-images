@@ -1,0 +1,102 @@
+# This Dockerfile shows how you can both build and run a container with 
+# a specific exporter/collector program. It uses two stages, copying the relevant
+# material from the build step into the runtime container.
+#
+# It can cope with both platforms where a Redistributable Client is available, and platforms
+# where it is not - copy the .deb install images for such platforms into the MQDEB
+# subdirectory of this repository first.
+
+# Global ARG. To be used in all stages.
+# Override with "--build-arg EXPORTER=mq_xxxxx" when building.
+ARG BASE_BUILD_IMAGE=goland:1.19
+# --- --- --- --- --- --- --- --- --- --- --- --- --- --- #
+## ### ### ### ### ### ### BUILD ### ### ### ### ### ### ##
+# --- --- --- --- --- --- --- --- --- --- --- --- --- --- #
+FROM ${BASE_BUILD_IMAGE} AS builder
+
+ARG BASE_SOURCE \ 
+    VRMF
+
+ENV ORG="github.com/ibm-messaging" \
+    REPO="mq-metric-samples" \
+    VRMF=${VRMF} \
+    CGO_CFLAGS="-I/opt/mqm/inc/" \
+    CGO_LDFLAGS_ALLOW="-Wl,-rpath.*" \
+    genmqpkg_incnls=1 \
+    genmqpkg_incsdk=1 \
+    genmqpkg_inctls=1
+
+# Install packages
+RUN sed -i "s|deb.debian.org|${BASE_SOURCE}|g" /etc/apt/sources.list.d/*.sources \ 
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        build-essential
+
+# Create directory structure
+RUN mkdir -p /opt/mqm \
+    && mkdir -p /MQDEB \
+    && chmod a+rx /opt/mqm
+
+# Install MQ client and SDK
+# For platforms with a Redistributable client, we can use curl to pull it in and unpack it.
+# For other platforms, we assume that you have the deb files available under the current directory
+# and we then copy them into the container image. Use dpkg to install from them; these have to be 
+# done in the right order.
+# 
+# If additional Redistributable Client platforms appear, then this block can be altered, including the MQARCH setting.
+
+# Redistributable Client packages are installed via local copy
+COPY ${VRMF}-IBM-MQC-Redist-LinuxX64.tar.gz /opt/mqm/${VRMF}-IBM-MQC-Redist-LinuxX64.tar.gz
+
+RUN cd /opt/mqm \
+    && tar -zxvf ${VRMF}-IBM-MQC-Redist-LinuxX64.tar.gz \
+    && rm -f ${VRMF}-IBM-MQC-Redist-LinuxX64.tar.gz \
+    && bin/genmqpkg.sh -b /opt/mqm
+
+# The Redistributable Client is obtained via remote download.
+# RUN MQARCH=X64;\
+#     RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist";\
+#     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz"; \
+#     cd /opt/mqm \
+#     && curl -LO "$RDURL/$VRMF-$RDTAR" \
+#     && tar -zxf ./*.tar.gz \
+#     && rm -f ./*.tar.gz \
+#     && bin/genmqpkg.sh -b /opt/mqm;\
+
+# --- --- --- --- --- --- --- --- --- --- --- --- --- --- #
+### ### ### ### ### ### ### RUN ### ### ### ### ### ### ###
+# --- --- --- --- --- --- --- --- --- --- --- --- --- --- #
+FROM ${BASE_BUILD_IMAGE} AS runtime
+
+ARG EXPORTER \
+    BASE_SOURCE 
+
+ENV EXPORTER=${EXPORTER} \
+    LD_LIBRARY_PATH="/opt/mqm/lib64:/usr/lib64" \
+    MQ_CONNECT_TYPE=CLIENT \
+    IBMMQ_GLOBAL_CONFIGURATIONFILE=/opt/config/${EXPORTER}.yaml
+
+# Create directory structure
+RUN mkdir -p /opt/mqm \
+    && chmod 775 /opt/mqm \
+    && mkdir -p /opt/config \
+    && chmod a+rx /opt/config
+
+# Install packages
+RUN sed -i "s|deb.debian.org|${BASE_SOURCE}|g" /etc/apt/sources.list.d/*.sources \ 
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create MQ client directories
+WORKDIR /opt/mqm
+RUN mkdir -p /IBM/MQ/data/errors \
+    && mkdir -p /.mqm \
+    && chmod -R 777 /IBM \
+    && chmod -R 777 /.mqm
+
+COPY --from=builder /opt/mqm/ /opt/mqm/
+
+CMD ["/bin/bash"]
