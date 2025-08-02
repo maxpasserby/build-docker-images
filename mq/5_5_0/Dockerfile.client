@@ -74,8 +74,8 @@ ARG EXPORTER \
 
 ENV EXPORTER=${EXPORTER} \
     LD_LIBRARY_PATH="/opt/mqm/lib64:/usr/lib64" \
-    MQ_CONNECT_TYPE=CLIENT \
-    IBMMQ_GLOBAL_CONFIGURATIONFILE=/opt/config/${EXPORTER}.yaml
+    MQ_CONNECT_TYPE=CLIENT
+    #IBMMQ_GLOBAL_CONFIGURATIONFILE=/opt/config/${EXPORTER}.yaml
 
 # Create directory structure
 RUN mkdir -p /opt/mqm \
