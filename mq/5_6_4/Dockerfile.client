@@ -140,7 +140,8 @@ RUN buildStamp=`date +%Y%m%d-%H%M%S`; \
 ### ### ### ### ### ### ### RUN ### ### ### ### ### ### ###
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- #
 # Use a "minimal" runtime image
-FROM registry.access.redhat.com/ubi8-minimal:latest AS runtime
+# FROM registry.access.redhat.com/ubi8-minimal:latest AS runtime
+FROM debian:bookworm-slim AS runtime
 
 ARG EXPORTER
 

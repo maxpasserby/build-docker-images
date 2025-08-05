@@ -3,16 +3,23 @@ networks:
   custom_network:
     ipam:
       config:
-        - subnet: 172.20.0.0/16
-          gateway: 172.20.0.1
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
 
 services:
+
+  # 初始化容器（任务完成后退出）
+  init-container:
+    image: ibmmq-exporter:5.6.4
+    volumes:
+      - init-data:/opt/bin/
+  # mq 主容器
   mq:
     container_name: mq
     image: ibmcom/mq:9.2.0.0-r3
     networks:
       custom_network:
-        ipv4_address: 172.20.0.10
+        ipv4_address: 172.30.0.10
     environment:
       LICENSE: "accept"
       MQ_QMGR_NAME: "QMSERVER"
@@ -23,33 +30,36 @@ services:
       - "1414:1414"
       - "9443:9443"
     restart: unless-stopped
-
+  # mq 监控容器
   mq-exporter:
     container_name: mq-exporter
     image: ibmmq-client:9.2.0.0
     networks:
       custom_network:
-        ipv4_address: 172.20.0.11
+        ipv4_address: 172.30.0.11
     command:
       - /bin/sh
       - -c
       - |
         sleep 20
         cd /opt/bin/
-        ./mq_prometheus \
-        -log.level="debug" \
-        -ibmmq.queueManager="QMSERVER" \
-        -ibmmq.connName="172.20.0.10(1414)" \
-        -ibmmq.channel="DEV.ADMIN.SVRCONN" \
-        -ibmmq.userid="admin" \
-        -ibmmq.password="123456" \
-        -ibmmq.useStatus \
-        -ibmmq.httpListenPort="9158"
 
+        ./mq_prometheus \
+          -log.level="debug" \
+          -ibmmq.queueManager="QMSERVER" \
+          -ibmmq.connName="172.30.0.10(1414)" \
+          -ibmmq.channel="DEV.ADMIN.SVRCONN" \
+          -ibmmq.userid="admin" \
+          -ibmmq.password="123456" \
+          -ibmmq.useStatus \
+          -ibmmq.httpListenPort="9158"
     volumes:
-      - /opt/images/ibmmq/mq_prometheus:/opt/bin/mq_prometheus
+      - init-data:/opt/bin/
     ports:
       - "9158:9158"
-    # depends_on:
-    #   - mq-main
+    depends_on:
+      - init-container
     restart: unless-stopped
+
+volumes:
+  init-data:  # 定义共享卷
