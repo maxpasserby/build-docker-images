@@ -1,0 +1,31 @@
+version: '3'
+networks:
+  custom_network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+services:
+  zookeeper:
+    image: zookeeper:3.4.8
+    container_name: zookeeper
+    restart: unless-stopped
+    networks:
+      custom_network:
+        ipv4_address: 172.20.0.2
+    ports:
+      - "2181:2181"
+  zookeeper-exporter:
+    image: carlpett/zookeeper_exporter:v1.1.0
+    container_name: zookeeper-exporter
+    restart: unless-stopped
+    networks:
+      custom_network:
+        ipv4_address: 172.20.0.3
+    command: 
+      - --zookeeper=172.20.0.2:2181
+    ports:
+      - "9141:9141"
+    depends_on:
+      - zookeeper
