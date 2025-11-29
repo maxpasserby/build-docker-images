@@ -20,13 +20,16 @@ RUN apk add --no-cache \
      openssl-dev \
      linux-headers \
      git \
-     wget 
+     wget
 
+# 编译 Nginx（启用 VTS\STS 模块）
 RUN wget -O nginx-${NGINX_VERSION}.tar.gz https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar -zxvf nginx-${NGINX_VERSION}.tar.gz \
-    && git clone https://github.com/vozlt/nginx-module-vts.git /nginx-module-vts
+    && git clone https://github.com/vozlt/nginx-module-vts.git /nginx-module-vts \
+    && git clone https://github.com/vozlt/nginx-module-stream-sts.git /nginx-module-stream-sts \
+    && git clone https://github.com/vozlt/nginx-module-sts.git /nginx-module-sts
 
-# 编译 Nginx（启用 VTS 模块）
+
 RUN cd /nginx-${NGINX_VERSION} \
   && ./configure \
       --prefix=/etc/nginx \
@@ -44,6 +47,7 @@ RUN cd /nginx-${NGINX_VERSION} \
       --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
       --user=nginx \
       --group=nginx \
+      --with-stream \
       --with-threads \
       --with-file-aio \
       --with-http_ssl_module \
@@ -52,6 +56,8 @@ RUN cd /nginx-${NGINX_VERSION} \
       --with-http_gzip_static_module \
       --with-http_stub_status_module \
       --add-module=/nginx-module-vts  \
+      --add-module=/nginx-module-stream-sts  \
+      --add-module=/nginx-module-sts  \
   && make -j$(nproc)  \
   && make install
 

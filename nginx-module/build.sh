@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_IMAGE=alpine:3.21
-NGINX_VERSION=1.27.2
+NGINX_VERSION=1.28.0
 APK_SOURCE=mirrors.tuna.tsinghua.edu.cn
 
 IMAGE="nginx:${NGINX_VERSION}"
